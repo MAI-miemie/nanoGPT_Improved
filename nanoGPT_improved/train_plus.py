@@ -8,6 +8,8 @@ train_plus.py - nanoGPT-Plus 训练脚本
 """
 
 import os, math, time, pickle, argparse
+import inspect
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
@@ -24,9 +26,9 @@ def load_meta(data_dir):
 class BinDataset:
     def __init__(self, data_dir, split, block_size):
         path = os.path.join(data_dir, f'{split}.bin')
-        with open(path, 'rb') as f:
-            data = pickle.load(f)
-        self.data = torch.tensor(data, dtype=torch.long)
+        # 原始 .bin 由 numpy.tofile 写出，这里使用 fromfile 读取
+        np_data = np.fromfile(path, dtype=np.uint16)
+        self.data = torch.tensor(np_data.astype(np.int64), dtype=torch.long)
         self.block_size = block_size
     def get_batch(self, batch_size, device):
         ix = torch.randint(0, len(self.data) - self.block_size, (batch_size,))
@@ -102,6 +104,9 @@ def main():
         dropout=0.0, bias=True, use_gradient_checkpointing=args.use_ckpt
     )
     model = GPTPlus(model_cfg).to(device)
+    # 自动启用两卡 DataParallel（若可用）
+    if device=='cuda' and torch.cuda.device_count() > 1:
+        model = torch.nn.DataParallel(model)
 
     # 优化器（CUDA 上启用 fused AdamW）
     fused_available = 'fused' in inspect.signature(torch.optim.AdamW).parameters if hasattr(torch.optim, 'AdamW') else False
@@ -181,8 +186,9 @@ def main():
             if val_loss < best_val:
                 best_val = val_loss
             # 按需保存（也可始终保存最新）
+            state_dict = model.module.state_dict() if hasattr(model, 'module') else model.state_dict()
             ckpt = {
-                'model': model.state_dict(),
+                'model': state_dict,
                 'model_args': model_cfg.__dict__,
                 'optimizer': optimizer.state_dict(),
                 'iter_num': iter_num,

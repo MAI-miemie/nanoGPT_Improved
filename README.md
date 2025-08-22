@@ -1,329 +1,134 @@
-This repository is an improved version of nanoGPT, a minimal and educational GPT implementation by Andrej Karpathy.
-Key features and improvements include:
-
-- Modified Transformer architecture and attention mechanism for efficiency.
-- Optimized training strategies suitable for limited GPU memory (e.g., NVIDIA 3060).
-- Support for small-scale experiments and rapid prototyping.
-- Easy-to-read, modular code for learning and extending GPT models.
-- Ready for text generation, fine-tuning, and research purposes.
-
-Designed for students, researchers, and developers interested in understanding and experimenting with GPT models.
-
-
-# 改进版 nanoGPT - RTX 3060 优化版本
-
-这是一个针对 RTX 3060 显存限制优化的 nanoGPT 实现，包含完整的中文注释和多种改进功能。
-
-# 主要改进
-
-### 1. 显存优化
-- **混合精度训练 (FP16)**: 节省约 50% 显存
-- **梯度累积**: 小批次累积实现大批次效果
-- **预定义模型配置**: 针对不同显存大小优化
-- **显存监控**: 实时监控显存使用情况
-
-### 2. 训练优化
-- **自动学习率调度**: 线性预热 + 余弦衰减
-- **更好的日志记录**: TensorBoard 支持
-- **多种采样策略**: Top-k, Top-p, 温度采样
-- **可控生成**: 情感和风格控制
-
-### 3. 易用性改进
-- **完整中文注释**: 便于理解和修改
-- **便捷函数**: 一键创建不同大小的模型
-- **交互式生成**: 实时对话式文本生成
-- **批量生成**: 支持多个提示同时生成
-
-## 文件结构
-
-```
-nanoGPT/
-├── model_improved.py      # 改进版模型定义
-├── train_improved.py      # 改进版训练脚本
-├── sample_improved.py     # 改进版采样脚本
-├── README_IMPROVED.md     # 本说明文档
-└── data/
-    └── shakespeare_char/  # 示例数据集
-```
-
-##  安装依赖
-
-```bash
-# 激活虚拟环境
-.venv\Scripts\activate
-
-# 安装基础依赖
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
-pip install numpy tiktoken datasets tqdm wandb
-
-# 安装 TensorBoard（用于训练监控）
-pip install tensorboard
-
-# 安装 transformers（用于预训练模型加载）
-pip install transformers
-```
-
-##  快速开始
-
-### 1. 准备数据
-
-```bash
-# 准备莎士比亚字符级数据
-python data\shakespeare_char\prepare.py
-```
-
-### 2. 训练模型
-
-#### 使用预定义配置（推荐）
-
-```bash
-# 小模型（适合快速验证）
-python train_improved.py --model_size tiny --max_iters 1000
-
-# 中等模型（平衡性能和速度）
-python train_improved.py --model_size small --max_iters 5000
-
-# 大模型（需要更多显存）
-python train_improved.py --model_size medium --max_iters 10000
-```
-
-#### 自定义参数
-
-```bash
-# 自定义批次大小和学习率
-python train_improved.py \
-    --model_size small \
-    --batch_size 8 \
-    --learning_rate 1e-3 \
-    --max_iters 3000 \
-    --out_dir out-custom
-```
-
-### 3. 生成文本
-
-#### 基础生成
-
-```bash
-# 使用训练好的模型生成文本
-python sample_improved.py --out_dir out-shakespeare-improved --start "To be, or not to be"
-```
-
-#### 交互式生成
-
-```bash
-# 进入交互模式
-python sample_improved.py --out_dir out-shakespeare-improved --interactive
-```
-
-#### 风格控制生成
-
-```bash
-# 在交互模式中使用风格控制
-# 输入: style:充满诗意的语言，| 春天的花朵
-```
-
-#### 情感控制生成
-
-```bash
-# 在交互模式中使用情感控制
-# 输入: emotion:happy| 今天天气很好
-```
-
-##  模型配置说明
-
-### 预定义模型大小
-
-| 模型大小 | 层数 | 头数 | 嵌入维度 | 块大小 | 参数数量 | 推荐显存 |
-|---------|------|------|----------|--------|----------|----------|
-| tiny    | 4    | 4    | 256      | 128    | ~1M      | 4GB      |
-| small   | 6    | 6    | 384      | 256    | ~3M      | 6GB      |
-| medium  | 12   | 12   | 768      | 512    | ~15M     | 8GB      |
-| large   | 24   | 16   | 1024     | 1024   | ~50M     | 12GB+    |
-
-### 针对 RTX 3060 的建议
-
-- **快速验证**: 使用 `tiny` 模型，几分钟内完成训练
-- **平衡训练**: 使用 `small` 模型，1-2 小时内完成训练
-- **深度训练**: 使用 `medium` 模型，需要数小时训练
-
-##  高级功能
-
-### 1. 混合精度训练
-
-自动启用 FP16 训练，显著节省显存：
-
-```python
-# 在 train_improved.py 中自动启用
-config['use_mixed_precision'] = True
-config['dtype'] = 'float16'
-```
-
-### 2. 梯度累积
-
-小批次累积实现大批次效果：
-
-```python
-# 例如：batch_size=8, gradient_accumulation_steps=4
-# 等效于 batch_size=32
-```
-
-### 3. 学习率调度
-
-自动学习率调度，提高训练稳定性：
-
-```python
-# 线性预热 + 余弦衰减
-warmup_iters = 100
-lr_decay_iters = 5000
-```
-
-### 4. 显存监控
-
-实时监控显存使用情况：
-
-```bash
-# 训练时会显示显存使用情况
-迭代 100: 训练损失 2.3456, 学习率 6.00e-04, 速度 1250.50 tokens/sec, MFU 0.85, 显存 4.23GB
-```
-
-##  训练监控
-
-### TensorBoard 可视化
-
-```bash
-# 启动 TensorBoard
-tensorboard --logdir out-shakespeare-improved/logs
-
-# 在浏览器中访问 http://localhost:6006
-```
-
-### 监控指标
-
-- **损失曲线**: 训练和验证损失
-- **学习率**: 学习率变化曲线
-- **MFU**: 模型 FLOPS 利用率
-- **显存使用**: 显存分配和保留情况
-- **训练速度**: tokens/sec
-
-##  生成策略
-
-### 1. 温度采样
-
-```bash
-# 低温度：更确定性
-python sample_improved.py --temperature 0.5
-
-# 高温度：更随机
-python sample_improved.py --temperature 1.2
-```
-
-### 2. Top-k 采样
-
-```bash
-# 限制候选 token 数量
-python sample_improved.py --top_k 50
-```
-
-### 3. Top-p (Nucleus) 采样
-
-```bash
-# 累积概率阈值
-python sample_improved.py --top_p 0.9
-```
-
-### 4. 贪婪解码
-
-```bash
-# 确定性生成
-python sample_improved.py --greedy
-```
-
-##  故障排除
-
-### 1. 显存不足
-
-```bash
-# 减小批次大小
-python train_improved.py --batch_size 4
-
-# 使用更小的模型
-python train_improved.py --model_size tiny
-
-# 使用 CPU 训练（慢但可行）
-python train_improved.py --device cpu
-```
-
-### 2. 训练速度慢
-
-```bash
-# 启用混合精度
-config['use_mixed_precision'] = True
-
-# 使用 GPU 训练
-python train_improved.py --device cuda
-```
-
-### 3. 生成质量差
-
-```bash
-# 增加训练迭代次数
-python train_improved.py --max_iters 10000
-
-# 调整生成参数
-python sample_improved.py --temperature 0.8 --top_p 0.9
-```
-
-##  自定义扩展
-
-### 1. 添加新的采样策略
-
-在 `sample_improved.py` 中添加新的生成函数：
-
-```python
-def generate_with_custom_strategy(model, encode, decode, prompt, **kwargs):
-    # 实现自定义生成策略
-    pass
-```
-
-### 2. 修改模型架构
-
-在 `model_improved.py` 中修改模型定义：
-
-```python
-class CustomGPT(GPT):
-    def __init__(self, config):
-        super().__init__(config)
-        # 添加自定义层
-        self.custom_layer = nn.Linear(config.n_embd, config.n_embd)
-```
-
-### 3. 添加新的数据集
-
-创建新的数据准备脚本：
-
-```python
-# data/custom_dataset/prepare.py
-def prepare_custom_data():
-    # 实现数据预处理
-    pass
-```
-
-##  贡献指南
-
-1. Fork 项目
-2. 创建功能分支
-3. 提交更改
-4. 推送到分支
-5. 创建 Pull Request
-
-##  许可证
-
-本项目基于 MIT 许可证开源。
-
-##  致谢
-
-- 原始 nanoGPT 项目：Andrej Karpathy
-- PyTorch 团队
-- HuggingFace transformers 库
+##  nanoGPT_Plus
+
+面向学习与小规模实验的 GPT 训练/生成项目，基于 Karpathy 的 nanoGPT 做了工程与易用性增强：显存优化、两卡并行、交互生成、中文注释与即开即用脚本。适合 10 分钟内完成的快速演示，也支持进一步扩展。
+
+### 相比原版 nanoGPT 的改进
+- 模型框架
+  - **GPT-Plus 架构**（`model_plus.py`）：保持 GPT-2 风格，新增可选的梯度检查点、可插拔注意力接口、更明确的权重初始化与参数统计。
+  - **更清晰的配置**：`GPTConfig` 聚合必要超参，采样/训练共享，便于保存与复现。
+- 训练策略与工程
+  - **混合精度 (FP16/BF16/FP32)** 可选；默认 FP16 以节省显存。
+  - **梯度累积** 与 **余弦退火 + 线性预热** 学习率调度。
+  - **两卡自动并行**：检测到多 GPU 时自动启用 `torch.nn.DataParallel`（无需额外指令），保存权重对采样脚本兼容。
+  - **fused AdamW（可用时）** 与 TensorBoard 日志。
+  - **数据读取修正**：`.bin` 使用 `numpy.fromfile(uint16)` 读取，更稳健更通用。
+- 交互生成
+  - `sample_plus.py` 支持交互、单次与批量生成；带温度、Top-k/Top-p；提供简单“风格/情感”提示工程入口。
 
 ---
+
+## 代码结构与脚本对齐
+- `nanoGPT_improved/train_plus.py` ↔ `nanoGPT_improved/sample_plus.py`
+- `nanoGPT_improved/train_improved.py` ↔ `nanoGPT_improved/sample_improved.py`
+
+建议优先使用 Plus 组（更易上手，和本 README 示例一致）。
+
+---
+
+## 环境安装（Windows 示例）
+```cmd
+python -m venv .venv
+.\.venv\Scripts\activate
+pip install --upgrade pip
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+pip install numpy tqdm tiktoken datasets tensorboard
+```
+
+---
+
+## 数据准备（字符级莎士比亚）
+```cmd
+cd nanoGPT_improved\data\shakespeare_char
+python prepare.py
+cd ..\..\..
+```
+
+---
+
+## 按设备选择模型与训练命令
+
+下表给出不同设备/显存的快速选择（均为 Plus 训练脚本，Windows/cmd）：
+
+| 设备/显存 | 模型建议 | 典型参数 | 示例命令（两卡可选） |
+|---|---|---|---|
+| CPU 或 ≤4GB | tiny | `--max_iters 300~800`，`--grad_accum_steps 4` | `python nanoGPT_improved\train_plus.py --model_size tiny --dataset shakespeare_char --data_dir nanoGPT_improved\data\shakespeare_char --out_dir out-plus-char --max_iters 500 --grad_accum_steps 4 --device cpu --dtype float32` |
+| 6~8GB (RTX 2060/3060) | small | `--max_iters 800~2000`，`--grad_accum_steps 4` | `set CUDA_VISIBLE_DEVICES=0,1 & python nanoGPT_improved\train_plus.py --model_size small --dataset shakespeare_char --data_dir nanoGPT_improved\data\shakespeare_char --out_dir out-plus-char --max_iters 1200 --eval_interval 200 --eval_iters 20 --log_interval 50 --grad_accum_steps 4 --device cuda --dtype float16` |
+| 10~12GB | medium（或 small 更快） | 适当增大 `--max_iters` | 同上，改 `--model_size medium`，必要时调小 `--batch_size` 或 `--grad_accum_steps` |
+| ≥16GB | medium/large | 适当放宽 `block_size/batch_size` | 同上，注意显存与速度平衡 |
+
+说明：
+- 两卡并行：先 `set CUDA_VISIBLE_DEVICES=0,1`，脚本会自动启用 `DataParallel`；无需改代码。
+- 数据目录：Plus 训练需显式指定 `--data_dir nanoGPT_improved\data\shakespeare_char`。
+- 10 分钟内演示：用 `tiny` 或 `small`，将 `--max_iters` 设为 300~1200，`--eval_interval` 稍大以减少评估开销。
+
+---
+
+## 训练（Plus 方案，推荐）
+极简演示（更快）：
+```cmd
+set CUDA_VISIBLE_DEVICES=0,1
+python nanoGPT_improved\train_plus.py --model_size tiny --dataset shakespeare_char --data_dir nanoGPT_improved\data\shakespeare_char --out_dir out-plus-char --max_iters 500 --eval_interval 100 --eval_iters 10 --log_interval 20 --grad_accum_steps 4 --device cuda --dtype float16
+```
+
+标准演示（平衡速度/效果）：
+```cmd
+set CUDA_VISIBLE_DEVICES=0,1
+python nanoGPT_improved\train_plus.py --model_size small --dataset shakespeare_char --data_dir nanoGPT_improved\data\shakespeare_char --out_dir out-plus-char --max_iters 1200 --eval_interval 200 --eval_iters 20 --log_interval 50 --grad_accum_steps 4 --device cuda --dtype float16
+```
+
+TensorBoard：
+```cmd
+tensorboard --logdir out-plus-char\logs
+```
+
+---
+
+## 交互与生成（Plus）
+- 交互模式：
+```cmd
+python nanoGPT_improved\sample_plus.py --out_dir out-plus-char --interactive --device cuda
+```
+- 单次生成：
+```cmd
+python nanoGPT_improved\sample_plus.py --out_dir out-plus-char --start "To be, or not to be" --device cuda
+```
+- 批量生成（每行一个提示）：
+```cmd
+(echo 今晚的月亮真圆& echo 写一首五言绝句& echo Explain overfitting in 1 sentence) > prompts.txt
+python nanoGPT_improved\sample_plus.py --out_dir out-plus-char --batch_file prompts.txt --device cuda
+```
+- 可选参数：`--max_new_tokens 200 --temperature 0.8 --top_k 200 --top_p 0.9`
+- 风格/情感（交互里输入）：
+  - `style:充满诗意的语言，| 今晚的月亮`
+  - `emotion:happy| 今天真好`
+
+若目录只有 `ckpt_final.pt`：
+```cmd
+copy out-plus-char\ckpt_final.pt out-plus-char\ckpt.pt
+```
+
+---
+
+## 使用 Improved 方案（可选）
+与上面成对使用：
+- 训练：`python nanoGPT_improved\train_improved.py`
+- 生成：
+```cmd
+python nanoGPT_improved\sample_improved.py --out_dir out-shakespeare-improved --start "To be, or not to be" --device cuda
+python nanoGPT_improved\sample_improved.py --out_dir out-shakespeare-improved --interactive --device cuda
+```
+
+---
+
+## 常见问题
+- 找不到 `meta.pkl` 或 `.bin`：确认已运行 `nanoGPT_improved\data\shakespeare_char\prepare.py`，并在 Plus 训练中带上 `--data_dir`。
+- 找不到 `ckpt.pt`：训练中期保存的是 `ckpt.pt`；若只有 `ckpt_final.pt`，可复制为 `ckpt.pt` 后再采样。
+- 显存不足：降低 `--batch_size` 或增大 `--grad_accum_steps`；改用更小模型；或切换 BF16/FP32。
+- 训练太慢：减少 `--max_iters`、降低评估频率；或用两卡（自动并行）。
+
+---
+
+## 许可证与致谢
+- 许可证：MIT
+- 致谢：Andrej Karpathy 的 nanoGPT、PyTorch 团队、HuggingFace 生态
+

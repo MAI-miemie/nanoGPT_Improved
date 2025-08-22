@@ -39,10 +39,9 @@ class DataLoaderLazy:
         self.device = device
         self.num_workers = num_workers
         
-        # 加载数据
-        with open(filename, 'rb') as f:
-            data = pickle.load(f)
-        self.data = torch.tensor(data, dtype=torch.long)
+        # 读取 numpy 写出的二进制 .bin（uint16）
+        np_data = np.fromfile(filename, dtype=np.uint16)
+        self.data = torch.tensor(np_data.astype(np.int64), dtype=torch.long)
         print(f"加载数据: {filename}, 形状: {self.data.shape}")
         
     def get_batch(self, split):
@@ -159,6 +158,9 @@ def main():
     print("创建模型...")
     model = create_model(config['model_size'], device_type, **model_config)
     model.to(device)
+    # 多GPU自动并行
+    if device == 'cuda' and torch.cuda.device_count() > 1:
+        model = torch.nn.DataParallel(model)
     
     # 打印模型信息
     print(f"模型参数数量: {model.get_num_params()/1e6:.2f}M")
@@ -298,8 +300,9 @@ def main():
             if losses < best_val_loss or config['always_save_checkpoint']:
                 best_val_loss = losses
                 if iter_num > 0:
+                    state_dict = model.module.state_dict() if hasattr(model, 'module') else model.state_dict()
                     checkpoint = {
-                        'model': model.state_dict(),
+                        'model': state_dict,
                         'optimizer': optimizer.state_dict(),
                         'model_args': model_config,
                         'iter_num': iter_num,
@@ -338,8 +341,9 @@ def main():
             break
     
     # 保存最终模型
+    final_state = model.module.state_dict() if hasattr(model, 'module') else model.state_dict()
     checkpoint = {
-        'model': model.state_dict(),
+        'model': final_state,
         'optimizer': optimizer.state_dict(),
         'model_args': model_config,
         'iter_num': iter_num,
@@ -388,17 +392,6 @@ if __name__ == '__main__':
                        help='是否使用 torch.compile（需要 MSVC）')
     
     args = parser.parse_args()
-    
-    # 更新配置
-    if args.batch_size is not None:
-        config['batch_size'] = args.batch_size
-    if args.out_dir is not None:
-        config['out_dir'] = args.out_dir
-    if args.device != 'cuda':
-        config['device_type'] = args.device
-    if args.dtype != 'float16':
-        config['dtype'] = args.dtype
-    if args.compile:
-        config['compile'] = True
-    
+    # 为避免在模块全局修改局部 config，这里直接调用 main()
+    # 若需自定义参数，建议在 main() 内部读取环境变量或进一步改造以接受参数。
     main()
