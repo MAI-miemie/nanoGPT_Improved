@@ -107,16 +107,7 @@ python nanoGPT_improved\sample_plus.py --out_dir out-plus-char --batch_file prom
 copy out-plus-char\ckpt_final.pt out-plus-char\ckpt.pt
 ```
 
----
 
-## 使用 Improved 方案（可选）
-与上面成对使用：
-- 训练：`python nanoGPT_improved\train_improved.py`
-- 生成：
-```cmd
-python nanoGPT_improved\sample_improved.py --out_dir out-shakespeare-improved --start "To be, or not to be" --device cuda
-python nanoGPT_improved\sample_improved.py --out_dir out-shakespeare-improved --interactive --device cuda
-```
 
 ---
 
