@@ -63,7 +63,7 @@ cd ..\..\..
 
 ---
 
-## 训练（Plus 方案，推荐）
+## 训练（Plus 方案）
 极简演示（更快）：
 ```cmd
 set CUDA_VISIBLE_DEVICES=0,1
